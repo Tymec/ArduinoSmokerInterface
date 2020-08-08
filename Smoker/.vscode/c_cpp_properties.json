@@ -1,0 +1,38 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "defines": [
+                "USBCON"
+            ],
+            "includePath": [
+                "${workspaceRoot}",
+                "C:\\Users\\Tymec\\Documents\\Arduino\\libraries\\**",
+                "D:\\Programs\\Arduino\\hardware\\arduino\\avr\\**",
+                "D:\\Programs\\Arduino\\hardware\\tools\\**",
+                "D:\\Programs\\Arduino\\tools\\**",
+                "D:\\Programs\\Arduino\\libraries\\**"
+            ],
+            "forcedInclude": [
+                "D:\\Programs\\Arduino\\hardware\\arduino\\avr\\cores\\arduino\\Arduino.h"
+            ],
+            "browse": {
+                "limitSymbolsToIncludedHeaders": false,
+                "databaseFilename": "",
+                "path": [
+                    "${workspaceRoot}",
+                    "C:\\Users\\Tymec\\Documents\\Arduino\\libraries\\**",
+                    "D:\\Programs\\Arduino\\hardware\\arduino\\avr\\**",
+                    "D:\\Programs\\Arduino\\hardware\\tools\\**",
+                    "D:\\Programs\\Arduino\\tools\\**",
+                    "D:\\Programs\\Arduino\\libraries\\**"
+                ]
+            },
+            "intelliSenseMode": "msvc-x64",
+            "compilerPath": "E:/Programs/Microsoft/VisualStudio/Visual Studio Community 2019/VC/Tools/MSVC/14.25.28610/bin/Hostx64/x64/cl.exe",
+            "cStandard": "c11",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
+}
