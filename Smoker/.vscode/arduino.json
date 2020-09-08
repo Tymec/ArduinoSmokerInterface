@@ -1,6 +1,0 @@
-{
-    "board": "arduino:avr:uno",
-    "sketch": "smoker.ino",
-    "programmer": "AVRISP mkII",
-    "port": "COM4"
-}

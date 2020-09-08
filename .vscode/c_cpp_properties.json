@@ -6,21 +6,25 @@
                 "USBCON"
             ],
             "includePath": [
+                "C:\\Users\\Tymec\\AppData\\Local\\Arduino15\\packages\\esp8266\\tools\\**",
+                "C:\\Users\\Tymec\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.7.4\\**",
                 "${workspaceRoot}",
+                "${workspaceRoot}\\Smoker",
+                "C:\\Users\\Tymec\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.7.4\\libraries\\**",
                 "C:\\Users\\Tymec\\Documents\\Arduino\\libraries\\**",
                 "D:\\Programs\\Arduino\\hardware\\arduino\\avr\\**",
                 "D:\\Programs\\Arduino\\hardware\\tools\\**",
                 "D:\\Programs\\Arduino\\tools\\**",
                 "D:\\Programs\\Arduino\\libraries\\**"
             ],
-            "forcedInclude": [
-                "D:\\Programs\\Arduino\\hardware\\arduino\\avr\\cores\\arduino\\Arduino.h"
-            ],
+            "forcedInclude": [],
             "browse": {
                 "limitSymbolsToIncludedHeaders": false,
                 "databaseFilename": "",
                 "path": [
                     "${workspaceRoot}",
+                    "${workspaceRoot}\\Smoker",
+                    "C:\\Users\\Tymec\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.7.4\\libraries\\**",
                     "C:\\Users\\Tymec\\Documents\\Arduino\\libraries\\**",
                     "D:\\Programs\\Arduino\\hardware\\arduino\\avr\\**",
                     "D:\\Programs\\Arduino\\hardware\\tools\\**",

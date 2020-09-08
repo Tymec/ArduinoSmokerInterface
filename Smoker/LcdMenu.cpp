@@ -1,16 +1,36 @@
-#include "smoker_lcdMenu.h"
+#include "LcdMenu.h"
 
-LcdMenu::LcdMenu(LiquidCrystal_I2C* lcd, uint8_t lcdRows, uint8_t lcdCols, MenuOption* menu) {
+LcdMenu::LcdMenu(LiquidCrystal_I2C* lcd, uint8_t lcdRows, uint8_t lcdCols, MenuOption* menu, SmokerController* smokerController) : smokerController(smokerController) {
     this->lcd = lcd;
     this->mainMenu = menu;
     this->lcdRows = lcdRows;
     this->lcdCols = lcdCols;
-    init();
 }
 
 void LcdMenu::init() {
+    uint8_t _downArrow[8] = {
+        0x04,
+        0x04,
+        0x04,
+        0x04,
+        0x04,
+        0x15,
+        0x0E,
+        0x04
+    };
+    uint8_t _upArrow[8] = {
+        0x04,
+        0x0E,
+        0x15,
+        0x04,
+        0x04,
+        0x04,
+        0x04,
+        0x04
+    };
     lcd->createChar(0, _upArrow);
     lcd->createChar(1, _downArrow);
+
     this->currentMenu = this->mainMenu;
 }
 
@@ -97,8 +117,13 @@ void LcdMenu::forceRefresh() {
 
 void LcdMenu::callOptionFunction() {
     OptionFunction optionCallback = currentMenu[index].getCallback();
+    void* properties = currentMenu[index].getValue();
+
     if (optionCallback != nullptr) {
-        optionCallback();
+        if (properties == nullptr)
+            properties = (void*)-1;
+        
+        optionCallback(properties);
     }
 }
 
@@ -115,31 +140,41 @@ void LcdMenu::callOptionSubmenu() {
 }
 
 void LcdMenu::moveEnter() {
-    //Serial.println(currentMenu[index].getText());
-
-    callOptionFunction();
-    callOptionSubmenu();
-    /*
+    //callOptionFunction();
+    //callOptionSubmenu();
     switch (currentMenu[index].getType()) {
+        case Placeholder:
+            Serial.println("Placeholder type case");
+            break;
+        case Header:
+            Serial.println("Header type case");
+            break;
         case Footer:
+            Serial.println("Footer type case");
+            break;
+        case SubHeader:
+            Serial.println("SubHeader type case");
+            callOptionFunction();
+            callOptionSubmenu();
+            break;
+        case Sub:
+            Serial.println("Sub type case");
+            callOptionFunction();
+            callOptionSubmenu();
             break;
         case Input:
+            Serial.println("Input type case");
+            callOptionFunction();
+            callOptionSubmenu();
             break;
         case Toggle:
-            MenuToggleProperties *properties = (MenuToggleProperties*) currentMenu[index].getProperties();
-            Serial.println(properties->getState());
-            break;
-        case Default:
-        case SubHeader:
-        case Sub:
-            
-        case Header:
-
+            Serial.println("Toggle type case");
+            callOptionFunction();
+            callOptionSubmenu();
         default:
-            
+            Serial.println("Default case");
             break;
     }
-    */
 }
 
 void LcdMenu::moveExit() {

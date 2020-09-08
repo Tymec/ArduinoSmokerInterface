@@ -1,13 +1,16 @@
-#pragma once
+#ifndef LCD_MENU_H
+#define LCD_MENU_H
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <Arduino.h>
-#include "smoker_lcdMenuItem.h"
+#include "LcdMenuOption.h"
+#include "SmokerController.h"
 
 class LcdMenu {
     public:
-        LcdMenu(LiquidCrystal_I2C* lcd, uint8_t lcdRows, uint8_t lcdCols, MenuOption* menu);
-
+        LcdMenu(LiquidCrystal_I2C* lcd, uint8_t lcdRows, uint8_t lcdCols, MenuOption* menu, SmokerController* smokerController);
+        
+        void init();
         void draw();
 
         uint8_t getIndex();
@@ -19,7 +22,6 @@ class LcdMenu {
         void moveUp();
         void moveDown();
     private:
-        void init();
         void drawCursor();
         void drawScrollbar();
         void drawMenu();
@@ -29,29 +31,9 @@ class LcdMenu {
 
         void callOptionFunction();
         void callOptionSubmenu();
-
-        byte _downArrow[8] = {
-            0b00100,
-            0b00100,
-            0b00100,
-            0b00100,
-            0b00100,
-            0b10101,
-            0b01110,
-            0b00100
-        };
-        byte _upArrow[8] = {
-            0b00100,
-            0b01110,
-            0b10101,
-            0b00100,
-            0b00100,
-            0b00100,
-            0b00100,
-            0b00100
-        };
         
         LiquidCrystal_I2C* lcd;
+        SmokerController* smokerController;
         MenuOption *mainMenu, *currentMenu;
         uint8_t lcdRows, lcdCols;
 
@@ -61,3 +43,4 @@ class LcdMenu {
         uint8_t index = 0;
         uint8_t cursorPosition = 0;
 };
+#endif

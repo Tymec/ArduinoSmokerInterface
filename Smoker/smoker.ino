@@ -1,78 +1,79 @@
 #include <Debounce.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
 #include <LiquidCrystal_I2C.h>
-#include <Arduino_FreeRTOS.h>
 
-#include "smoker_helper.h"
-#include "smoker_lcdMenu.h"
+#include "SmokerController.h"
+#include "smokerHelper.h"
+#include "LcdMenu.h"
+#include "SmokerWeb.h"
 
-#define TEMP_PIN 5
-#define E_BTN 4
-#define W_BTN 7
-#define S_BTN 8
-#define RELAY_1 10
-#define RELAY_2 9
-#define RELAY_3 8
+TimeSettings timeSettings = {
+  minToMs(45),  // DRYING TIME        (45-90min)
+  hToMs(2),     // SMOKING TIME       (2-4h)
+  hToMs(2),     // THERMAL TIME       (2-4h)
+  minToMs(10)   // TURBO SMOKING TIME (10min)
+};
+TemperatureSettings temperatureSettings = {
+  30, // DRYING MIN TEMP
+  40, // DRYING MAX TEMP
+  50, // SMOKING MIN TEMP
+  65, // SMOKING MAX TEMP
+  80, // THERMAL MIN TEMP
+  90, // THERMAL MAX TEMP
+  D5   // TEMP PIN
+};
+RelaySettings relaySettings = { 
+  D4, // POWER RELAY
+  D3   // SMOKE RELAY
+};
+SmokerSettings smokerSettings = {
+  &timeSettings,        // TIME SETTINGS
+  &temperatureSettings, // TEMPERATURE SETTINGS
+  &relaySettings        // RELAY SETTINGS
+};
+SmokerController smokerController(&smokerSettings);
+
+#define E_BTN D6
+#define W_BTN D7
+#define S_BTN D8
 
 #define LCD_ROWS 2
 #define LCD_COLS 16
 #define DEBOUNCE_DELAY 50
 
-float temperature;
-short smokingTime = 10;
-
-OneWire oneWire(TEMP_PIN);
-DallasTemperature tempSensor(&oneWire);
 LiquidCrystal_I2C lcd(0x3F, 16, 2);
 Debounce eButton(E_BTN, DEBOUNCE_DELAY);
 Debounce wButton(W_BTN, DEBOUNCE_DELAY);
 Debounce sButton(S_BTN, DEBOUNCE_DELAY);
 
-typedef struct {
-  float time;
-  unsigned short tempValue;
-  unsigned short tempMax;
-  unsigned short tempMin;
-  unsigned short tempOffset;
-} TempControlData;
-TempControlData tempControlData;
-
-void taskTempControl    ( void *pvParameters );
-void taskSmokingControl ( void *pvParameters );
-
-TaskHandle_t taskTempControl_Handler;
-TaskHandle_t taskSmokingControl_Handler;
-
 namespace menuCallback {
   bool backlight = true;
-  void callback_backlight() {
+  void callback_backlight(void* pv) {
+    ToggleProperties* tPv = (ToggleProperties*) pv;
+    Serial.println(tPv->getTextOff());
+
     backlight = !backlight;
     lcd.setBacklight(backlight);
   }
 
   bool contrast = true;
-  void callback_contrast() {
+  void callback_contrast(void* pv) {
     contrast = !contrast;
     lcd.setContrast(contrast);
   }
 };
 
 extern MenuOption mainMenu[];
-/*
 extern MenuOption profileMenu[];
 extern MenuOption settingsMenu[];
 extern MenuOption temperatureMenu[];
 extern MenuOption timeMenu[];
-*/
 
 MenuOption mainMenu[] = {
-  MenuSub("Profiles", nullptr),
-  MenuSub("Settings", nullptr),
+  MenuSub("Profiles", profileMenu),
+  MenuSub("Settings", settingsMenu),
   MenuOption("Debug"),
   MenuFooter()
 };
-/*
 MenuOption profileMenu[] = {
   MenuSubHeader("Back", mainMenu),
   MenuInput("Drying", nullptr),
@@ -80,7 +81,6 @@ MenuOption profileMenu[] = {
   MenuInput("Thermal", nullptr),
   MenuFooter()
 };
-
 MenuOption temperatureMenu[] = {
   MenuSubHeader("Back", settingsMenu),
   MenuInput("Drying", nullptr),
@@ -88,7 +88,6 @@ MenuOption temperatureMenu[] = {
   MenuInput("Thermal", nullptr),
   MenuFooter()
 };
-
 MenuOption timeMenu[] = {
   MenuSubHeader("Back", settingsMenu),
   MenuInput("Drying", nullptr),
@@ -96,34 +95,56 @@ MenuOption timeMenu[] = {
   MenuInput("Thermal", nullptr),
   MenuFooter()
 };
-
 MenuOption settingsMenu[] = {
   MenuSubHeader("Back", mainMenu),
-  MenuToggle("Contract", menuCallback::callback_contrast),
-  MenuToggle("Backlight", menuCallback::callback_backlight),
+  MenuToggle("Contract", menuCallback::callback_contrast, ToggleProperties("On", "Off", true)),
+  MenuToggle("Backlight", menuCallback::callback_backlight, ToggleProperties("On", "Off", true)),
   MenuSub("Temperatures", temperatureMenu),
   MenuSub("Times", timeMenu),
   MenuOption("Wi-Fi"),
   MenuFooter()
 };
-*/
-LcdMenu lcdMenu(&lcd, 2, 16, mainMenu);
-bool sPressed, wPressed, ePressed;
+LcdMenu lcdMenu(&lcd, 2, 16, mainMenu, &smokerController);
+
+WebConfig webConfig = {
+  "ASUS_2Ghz",        // SSID
+  "Maranata2017",     // PASS
+
+  "SmokerAP",         // AP SSID
+  "Smoker2017",       // AP PASS
+
+  "6jUKI1F7NvhWoNF",  // WWW API TOKEN 
+
+  "smerk0r",          // OTA PASS
+  "smokerMCU",        // OTA HOSTNAME
+  "8266",             // OTA PORT
+
+  "smoker",           // DOMAIN NAME
+  80                  // WEB PORT
+};
+SmokerWeb smokerWeb(&webConfig, &smokerController);
+
+bool sPressed, wPressed, ePressed, controlsLocked;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   lcd.init();
+  lcdMenu.init();
+  smokerWeb.init();
   lcd.backlight();
   lcd.clear();
 
-  pinMode(TEMP_PIN, INPUT);
-  pinMode(RELAY_1, OUTPUT);
-  pinMode(RELAY_2, OUTPUT);
-  pinMode(RELAY_3, OUTPUT);
+  //smokerController.setState(DRYING);
+}
 
-  while (true) {
-    lcdMenu.draw();
+void loop() {
+  smokerController.update();
+  smokerWeb.update();
 
+  /*
+  lcdMenu.draw();
+
+  if (!controlsLocked) {
     if (eButton.read() && !ePressed) {
       lcdMenu.moveEnter();
       ePressed = true;
@@ -143,10 +164,7 @@ void setup() {
       sPressed = false;
     }
   }
-
-}
-
-void loop() {
+  */
 }
 
 float getInput(char* prompt, char* unit, uint16_t minValue, uint16_t maxValue, float stepValue) {
@@ -158,7 +176,7 @@ float getInput(char* prompt, char* unit, uint16_t minValue, uint16_t maxValue, f
   // dot      0xA5
   // degrees  0xA1
   lcd.clear();
-
+  
   lcd.setCursor(0, 0);
   lcd.print(prompt);
 
@@ -167,8 +185,7 @@ float getInput(char* prompt, char* unit, uint16_t minValue, uint16_t maxValue, f
 
   float input = minValue;
   float prevInput;
-
-  bool sPressed, wPressed;
+  
   while (!eButton.read()) {
     if (input >= maxValue) {
       input = maxValue;
@@ -205,65 +222,4 @@ float getInput(char* prompt, char* unit, uint16_t minValue, uint16_t maxValue, f
   }
   lcd.clear();
   return input;
-}
-
-void startDrying() {
-  // RELAY 1: 45-90min
-  // RELAY 2: 30-40*C
-  // RELAY 3: OFF
-  lcd.setCursor(0, 0);
-  lcd.print("Drying");
-  
-  // Set time between 50min to 90min (User input)
-  float time = getInput("Time (45-90):", "min", 45, 90, 15);
-
-  tempControlData.time = time;
-  tempControlData.tempValue = 35;
-  tempControlData.tempOffset = 5;
-
-  xTaskCreate(
-    taskTempControl,
-    "Temp Control",
-    128,
-    (void*) &tempControlData,
-    2,
-    &taskTempControl_Handler
-  );
-
-  return;
-}
-
-void startSmoking() {
-  // RELAY 1: 10min / 2-4h
-  // RELAY 2: 50-65*C
-  // RELAY 3: 10min / OFF
-  lcd.setCursor(0, 0);
-  lcd.print("Smoking");
-
-  // Set time between 2h to 4h (User input)
-  float time = getInput("Time (2-4):", "h", 2, 4, .5);
-  
-  return;
-}
-
-void startThermal() {
-  // RELAY 1: 2-4h
-  // RELAY 2: 80-90*C
-  // RELAY 3: OFF
-  lcd.setCursor(0, 0);
-  lcd.print("Thermal");
-  
-  // Set time between 2h to 4h (User input)
-  float time = getInput("Time (2-4):", "h", 2, 4, .5);
-  
-  return;
-}
-
-void taskTempControl (void *pvParameters) {
-  TempControlData *data = (TempControlData*) pvParameters;
-  Serial.println(data->tempValue);
-}
-
-void taskSmoking (void *pvParameters) {
-  (void*) pvParameters;
 }
