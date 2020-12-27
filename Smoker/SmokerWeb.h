@@ -30,6 +30,7 @@ typedef struct {
     char* otaPort;
 
     char* domainName;
+    char* hostName;
     uint16_t webPort;
 } WebConfig;
 
@@ -61,12 +62,13 @@ class SmokerWeb {
         void handle_OnApiControllerRelay(AsyncWebServerRequest *request);
         void handle_OnApiControllerState(AsyncWebServerRequest *request);
         void handle_OnApiControllerTemperature(AsyncWebServerRequest *request);
+        void handle_OnApiControllerManual(AsyncWebServerRequest *request);
+        void handle_OnApiControllerValues(AsyncWebServerRequest *request);
 
-        void handle_OnApiSettings(AsyncWebServerRequest *request);
+        void handle_OnApiSettingsValues(AsyncWebServerRequest *request);
         void handle_OnApiSettingsTemperature(AsyncWebServerRequest *request);
         void handle_OnApiSettingsTime(AsyncWebServerRequest *request);
         void handle_OnApiSettingsRelay(AsyncWebServerRequest *request);
-        void handle_OnApiSettingsTemperaturePin(AsyncWebServerRequest *request);
         
         SmokerController* smokerController;
         SmokerSettings* smokerSettings;

@@ -58,5 +58,6 @@
         "regex": "cpp",
         "xlocbuf": "cpp",
         "xlocmes": "cpp"
-    }
+    },
+    "compile-hero.disable-compile-files-on-did-save-code": true
 }

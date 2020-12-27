@@ -21,14 +21,15 @@ enum SmokerSettingsTemperatureType {
     SMOKING_MAX_TEMP_SETTING,
 
     THERMAL_MIN_TEMP_SETTING,
-    THERMAL_MAX_TEMP_SETTING,
-
-    TEMP_PIN_SETTING
+    THERMAL_MAX_TEMP_SETTING
 };
 
 enum SmokerSettingsRelayType {
     POWER_RELAY_SETTING,
-    SMOKE_RELAY_SETTING
+    SMOKE_RELAY_SETTING,
+
+    TEMP_PIN_SETTING,
+    STATUS_PIN_SETTING
 };
 
 enum SmokerState {
@@ -81,13 +82,14 @@ typedef struct {
 
   uint16_t thermalMinTemp;
   uint16_t thermalMaxTemp;
-
-  uint8_t tempPin;
 } TemperatureSettings;
 
 typedef struct {
   uint8_t powerRelay;
   uint8_t smokeRelay;
+
+  uint8_t tempPin;
+  uint8_t statusPin;
 } RelaySettings;
 
 typedef struct {

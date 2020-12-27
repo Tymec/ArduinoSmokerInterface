@@ -3,7 +3,7 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <Arduino.h>
-#include "smokerHelper.h"
+#include "SmokerHelper.h"
 
 class SmokerController {
     public:
@@ -16,12 +16,15 @@ class SmokerController {
         void setState(SmokerState newState);
         bool getRelayState(SmokerSettingsRelayType type);
         void setRelayState(SmokerSettingsRelayType type, bool state);
+        void setManualMode(bool value);
+        bool isManualMode();
 
         uint32_t getSmokerSettingsTime(SmokerSettingsTimeType type);
         void setSmokerSettingsTime(SmokerSettingsTimeType type, uint32_t v);
         uint16_t getSmokerSettingsTemperature(SmokerSettingsTemperatureType type);
         void setSmokerSettingsTemperature(SmokerSettingsTemperatureType type, uint16_t v);
         uint8_t getSmokerSettingsRelay(SmokerSettingsRelayType type);
+        uint16_t getTimeLeft(SmokerSettingsRelayType type);
 
         bool isStateFinished();
         bool isSmokingFinished();
@@ -36,11 +39,18 @@ class SmokerController {
         unsigned long previousTime;
         unsigned long stateTime;
         unsigned long smokingTime;
+
+        unsigned long timeLeft;
+        unsigned long smokingTimeLeft;
         
+        bool manualMode = false;
+
         Relay* powerRelay;
         Relay* smokeRelay;
-        OneWire* oneWire;
-        DallasTemperature* tempSensor;
+        Relay* statusIndicator;
+
+        OneWire oneWire;
+        DallasTemperature tempSensor;
 
         SmokerSettings* smokerSettings;
         SmokerState state = IDLE;

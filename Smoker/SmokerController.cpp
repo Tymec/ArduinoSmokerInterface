@@ -1,12 +1,17 @@
 #include "SmokerController.h"
 
 SmokerController::SmokerController(SmokerSettings* smokerSettings) : smokerSettings(smokerSettings) {
-    pinMode(smokerSettings->temperatures->tempPin, INPUT);
-    this->oneWire = new OneWire(smokerSettings->temperatures->tempPin);
-    this->tempSensor = new DallasTemperature(this->oneWire);
+    pinMode(smokerSettings->relays->tempPin, INPUT);
+
+    this->oneWire = OneWire(smokerSettings->relays->tempPin);
+    this->tempSensor = DallasTemperature(&this->oneWire);
+
+    this->tempSensor.begin();
 
     this->powerRelay = new Relay("Power", false, smokerSettings->relays->powerRelay);
     this->smokeRelay = new Relay("Smoke", false, smokerSettings->relays->smokeRelay);
+
+    this->statusIndicator = new Relay("Status", false, smokerSettings->relays->statusPin);
 }
 
 void SmokerController::update() {
@@ -38,6 +43,24 @@ void SmokerController::update() {
 
 SmokerState SmokerController::getState() {
     return this->state;
+}
+
+uint16_t SmokerController::getTimeLeft(SmokerSettingsRelayType type) {
+    if (this->state == IDLE) {
+        return 0;
+    }
+    
+    switch(type) {
+        case POWER_RELAY_SETTING:
+            return this->timeLeft;
+            break;
+        case SMOKE_RELAY_SETTING:
+            return this->smokingTimeLeft;
+            break;
+        default:
+            return 0;
+            break;
+    }
 }
 
 float SmokerController::getTemperature() {
@@ -82,6 +105,14 @@ void SmokerController::setRelayState(SmokerSettingsRelayType type, bool state) {
             break;
     }
     logFunctionCall("SmokerController::setSmokerRelayState()", state);
+}
+
+void SmokerController::setManualMode(bool value) {
+    this->manualMode = value;
+}
+
+bool SmokerController::isManualMode() {
+    return this->manualMode;
 }
 
 uint32_t SmokerController::getSmokerSettingsTime(SmokerSettingsTimeType type) {
@@ -163,12 +194,6 @@ uint16_t SmokerController::getSmokerSettingsTemperature(SmokerSettingsTemperatur
             logFunctionCall("SmokerController::getSmokerSettingsTemperature()", this->smokerSettings->temperatures->thermalMaxTemp);
             return this->smokerSettings->temperatures->thermalMaxTemp;
             break;
-
-        case TEMP_PIN_SETTING:
-            logFunctionCall("SmokerController::getSmokerSettingsTemperature()", "Requested Temperature Sensor Pin");
-            logFunctionCall("SmokerController::getSmokerSettingsTemperature()", this->smokerSettings->temperatures->tempPin);
-            return this->smokerSettings->temperatures->tempPin;
-            break;
         default:
             logFunctionCall("SmokerController::getSmokerSettingsTemperature()", "DEFAULT CASE OCCURED");
             break;
@@ -221,6 +246,14 @@ uint8_t SmokerController::getSmokerSettingsRelay(SmokerSettingsRelayType type) {
             logFunctionCall("SmokerController::getSmokerSettingsRelay()", this->smokerSettings->relays->smokeRelay);
             return this->smokerSettings->relays->smokeRelay;
             break;
+        case TEMP_PIN_SETTING:
+            logFunctionCall("SmokerController::getSmokerSettingsRelay()", this->smokerSettings->relays->tempPin);
+            return this->smokerSettings->relays->tempPin;
+            break;
+        case STATUS_PIN_SETTING:
+            logFunctionCall("SmokerController::getSmokerSettingsRelay()", this->smokerSettings->relays->statusPin);
+            return this->smokerSettings->relays->statusPin;
+            break;
         default:
             logFunctionCall("SmokerController::getSmokerSettingsRelay()", "DEFAULT CASE OCCURED");
             break;
@@ -228,10 +261,22 @@ uint8_t SmokerController::getSmokerSettingsRelay(SmokerSettingsRelayType type) {
 }
 
 void SmokerController::setState(SmokerState newState) {
+    if (newState != IDLE) {
+      resetState();
+    }
+    
     this->state = newState;
+    this->statusIndicator->set(false);
+    
     if (this->state == IDLE) {
         logFunctionCall("SmokerController::setState()", "State changed to IDLE");
         this->stateTime = 0;
+        this->smokingTime = 0;
+
+        this->timeLeft = 0;
+        this->smokingTimeLeft = 0;
+
+        statusIndicator->set(true);
         powerRelay->set(false);
         smokeRelay->set(false);
         return; 
@@ -257,12 +302,19 @@ void SmokerController::setState(SmokerState newState) {
             break;
     }
     this->previousTime = millis();
+    isStateFinished();
+    if (this->state == SMOKING)
+        isSmokingFinished();
 }
 
 void SmokerController::handleDryingState() {
     if (isStateFinished()) {
         logFunctionCall("SmokerController::handleDryingState()", "State Finished");
         resetState();
+        return;
+    }
+
+    if (this->manualMode) {
         return;
     }
 
@@ -279,6 +331,10 @@ void SmokerController::handleSmokingState() {
     if (isStateFinished()) {
         logFunctionCall("SmokerController::handleSmokingState()", "State Finished");
         resetState();
+        return;
+    }
+
+    if (this->manualMode) {
         return;
     }
 
@@ -304,6 +360,10 @@ void SmokerController::handleThermalState() {
         return;
     }
 
+    if (this->manualMode) {
+        return;
+    }
+
     if (getTemperature() >= this->smokerSettings->temperatures->thermalMaxTemp) {
         logFunctionCall("SmokerController::handleThermalState()", "Temperature Too High");
         this->powerRelay->set(false);
@@ -319,6 +379,9 @@ void SmokerController::resetState() {
 }
 
 bool SmokerController::isStateFinished() {
+    this->timeLeft = this->stateTime - (unsigned long)(millis() - this->previousTime);
+    this->timeLeft = msToMin(this->timeLeft);
+
     if ((unsigned long)(millis() - this->previousTime) >= this->stateTime) {
         return true;
     }
@@ -326,6 +389,9 @@ bool SmokerController::isStateFinished() {
 }
 
 bool SmokerController::isSmokingFinished() {
+    this->smokingTimeLeft = this->smokingTime - (unsigned long)(millis() - this->previousTime);
+    this->smokingTimeLeft = msToMin(this->smokingTimeLeft);
+    
     if ((unsigned long)(millis() - this->previousTime) >= this->smokingTime) {
         return true;
     }
@@ -333,7 +399,7 @@ bool SmokerController::isSmokingFinished() {
 }
 
 float SmokerController::readTemperature() {
-    this->tempSensor->requestTemperatures();
-    return this->tempSensor->getTempCByIndex(0);
+    this->tempSensor.requestTemperatures();
+    //Serial.println(this->tempSensor.getTempCByIndex(0));
+    return this->tempSensor.getTempCByIndex(0);
 }
-
