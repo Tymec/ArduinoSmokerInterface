@@ -3,6 +3,7 @@
 #include "SmokerController.h"
 #include "SmokerHelper.h"
 #include "SmokerWeb.h"
+#include "secrets.h"
 
 TimeSettings timeSettings = {
   minToMs(45),  // DRYING TIME        (45-90min)
@@ -43,8 +44,8 @@ Debounce wButton(W_BTN, DEBOUNCE_DELAY);
 Debounce sButton(S_BTN, DEBOUNCE_DELAY);
 
 WebConfig webConfig = {
-  "ASUS_2Ghz",        // SSID
-  "Maranata2017",     // PASS
+  WIFI_SSID,        // SSID
+  WIFI_PASS,     // PASS
 
   "SmokerAP",         // AP SSID
   "Smoker2017",       // AP PASS
